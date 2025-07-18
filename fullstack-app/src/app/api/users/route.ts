@@ -1,16 +1,27 @@
-import { connectToDB } from '@/lib/mongodb';
-import { User } from '@/models/User';
 import { NextResponse } from 'next/server';
-
-export async function GET() {
-  await connectToDB();
-  const users = await User.find();
-  return NextResponse.json(users);
-}
+import dbConnect from '@/lib/mongodb';
+import User from '@/models/User';
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  await connectToDB();
-  const user = await User.create(body);
-  return NextResponse.json(user);
+  try {
+    const body = await req.json();
+    console.log('Received data:', body);
+
+    const { name, email } = body;
+    if (!name || !email) {
+      return NextResponse.json({ success: false, error: 'Name and Email are required' }, { status: 400 });
+    }
+
+    await dbConnect();
+    console.log('Connected to DB');
+
+    const newUser = new User({ name, email });
+    await newUser.save();
+    console.log('User saved:', newUser);
+
+    return NextResponse.json({ success: true, user: newUser });
+  } catch (error: any) {
+    console.error('Error in POST /api/users:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
 }
